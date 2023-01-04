@@ -1,0 +1,7 @@
+README.txt
+searchmodule.py
+setup.py
+searchmodule.egg-info/PKG-INFO
+searchmodule.egg-info/SOURCES.txt
+searchmodule.egg-info/dependency_links.txt
+searchmodule.egg-info/top_level.txt
