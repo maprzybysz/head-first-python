@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request, escape
 from searchmodule import search_for_letters
-import datetime
+
+from DBcm import UseDatabase
 
 app = Flask(__name__)
 
+app.config['dbconfig'] = {'host': '127.0.0.1', 'port': '3307', 'user': 'vsearch', 'password': 'password123', 'database': 'vsearchlogDB', }
 
 @app.route('/')
 @app.route('/entry')
@@ -12,15 +14,10 @@ def entry_page() -> 'html':
 
 
 def log_request(req: 'flask_request', res: str) -> None:
-    dbconfig = {'host': '127.0.0.1', 'port': '3307', 'user': 'vsearch', 'password': 'password123', 'database': 'vsearchlogDB', }
-    import mysql.connector
-    conn = mysql.connector.connect(**dbconfig)
-    cursor = conn.cursor()
-    _SQL = """INSERT INTO log (phrase, letters, ip, browser_string, results) VALUES (%s, %s, %s, %s, %s)"""
-    cursor.execute(_SQL, (req.form['phrase'], req.form['letters'], req.remote_addr, str(req.user_agent.browser), res, ))
-    conn.commit()
-    cursor.close()
-    conn.close()
+   
+    with UseDatabase(app.config['dbconfig']) as cursor:
+        _SQL = """INSERT INTO log (phrase, letters, ip, browser_string, results) VALUES (%s, %s, %s, %s, %s)"""
+        cursor.execute(_SQL, (req.form['phrase'], req.form['letters'], req.remote_addr, str(req.user_agent), res, ))
 
 @app.route('/search4', methods=['POST'])
 def do_search() -> 'html':
@@ -34,13 +31,13 @@ def do_search() -> 'html':
 
 @app.route('/viewlog')
 def view_the_log() -> 'html':
-    contents = []
-    with open('vsearch.log') as log:
-       for line in log:
-        contents.append([])
-        for item in line.split('|'):
-            contents[-1].append(escape(item))
-    titles = ('Data', 'Dane z formularza', 'Adres klienta', 'Agent użytkownika', 'Wyniki')
+
+    with UseDatabase(app.config['dbconfig']) as cursor:
+        _SQL = """SELECT phrase, letters, ip, browser_string, results FROM log"""
+        cursor.execute(_SQL)
+        contents = cursor.fetchall()
+        titles = ('Fraza', 'Litery', 'Adres klienta', 'Agent użytkownika', 'Wyniki')
+
     return render_template('viewlog.html', the_title='Widok logu', the_row_titles=titles, the_data=contents,)
 
 if __name__ == '__main__':
